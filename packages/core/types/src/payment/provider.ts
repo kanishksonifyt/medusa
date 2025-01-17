@@ -121,6 +121,19 @@ export type PaymentProviderSessionResponse = {
 /**
  * @interface
  *
+ * The response of operations on a payment account holder.
+ */
+export type PaymentAccountHolderResponse = {
+  /**
+   * The data field can be stored in eg. `customer.metadata`, which should then be passed to other methods as part of the context.
+   * The field can contain external customer IDs, and other information that is necessary for the account holder when performing a payment.
+   */
+  data: Record<string, unknown>
+}
+
+/**
+ * @interface
+ *
  * The successful result of authorizing a payment session using a payment provider.
  */
 export type PaymentProviderAuthorizeResponse = {
@@ -253,6 +266,14 @@ export interface IPaymentProvider {
   cancelPayment(
     paymentSessionData: Record<string, unknown>
   ): Promise<PaymentProviderError | PaymentProviderSessionResponse["data"]>
+
+  createAccountHolder(
+    context: PaymentProviderContext
+  ): Promise<PaymentProviderError | PaymentAccountHolderResponse>
+
+  deleteAccountHolder(
+    context: PaymentProviderContext
+  ): Promise<PaymentProviderError | PaymentAccountHolderResponse>
 
   listPaymentMethods(
     context: PaymentProviderContext

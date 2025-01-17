@@ -30,6 +30,8 @@ import {
   UpdatePaymentCollectionDTO,
   UpdatePaymentDTO,
   UpdatePaymentSessionDTO,
+  CreateAccountHolderDTO,
+  DeleteAccountHolderDTO,
   UpsertPaymentCollectionDTO,
   WebhookActionResult,
 } from "@medusajs/framework/types"
@@ -906,6 +908,26 @@ export default class PaymentModuleService
       }),
       count,
     ]
+  }
+
+  @InjectManager()
+  async createAccountHolder(
+    input: CreateAccountHolderDTO
+  ): Promise<Record<string, unknown>> {
+    return this.paymentProviderService_.createAccountHolder(
+      input.provider_id,
+      input.context
+    )
+  }
+
+  @InjectManager()
+  async deleteAccountHolder(
+    input: DeleteAccountHolderDTO
+  ): Promise<Record<string, unknown>> {
+    return this.paymentProviderService_.deleteAccountHolder(
+      input.provider_id,
+      input.context
+    )
   }
 
   @InjectManager()

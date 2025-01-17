@@ -1,4 +1,7 @@
 import {
+  AddressDTO,
+  CustomerDTO,
+  PaymentCustomerDTO,
   PaymentProviderContext,
   PaymentSessionDTO,
 } from "@medusajs/framework/types"
@@ -8,10 +11,16 @@ import {
   createWorkflow,
   parallelize,
   transform,
+  when,
 } from "@medusajs/framework/workflows-sdk"
 import { useRemoteQueryStep } from "../../common"
-import { createPaymentSessionStep } from "../steps"
+import {
+  createPaymentSessionStep,
+  createPaymentAccountHolderStep,
+} from "../steps"
 import { deletePaymentSessionsWorkflow } from "./delete-payment-sessions"
+import { updateCustomersStep } from "../../customer"
+import { isPresent } from "@medusajs/framework/utils"
 
 /**
  * The data to create payment sessions.
@@ -27,6 +36,10 @@ export interface CreatePaymentSessionsWorkflowInput {
    */
   provider_id: string
   /**
+   * The ID of the customer that the payment session should be associated with.
+   */
+  customer_id?: string
+  /**
    * Custom data relevant for the payment provider to process the payment session.
    * Learn more in [this documentation](https://docs.medusajs.com/resources/commerce-modules/payment/payment-session#data-property).
    */
@@ -41,10 +54,10 @@ export const createPaymentSessionsWorkflowId = "create-payment-sessions"
 /**
  * This workflow creates payment sessions. It's used by the
  * [Initialize Payment Session Store API Route](https://docs.medusajs.com/api/store#payment-collections_postpaymentcollectionsidpaymentsessions).
- * 
+ *
  * You can use this workflow within your own customizations or custom workflows, allowing you
  * to create payment sessions in your custom flows.
- * 
+ *
  * @example
  * const { result } = await createPaymentSessionsWorkflow(container)
  * .run({
@@ -53,9 +66,9 @@ export const createPaymentSessionsWorkflowId = "create-payment-sessions"
  *     provider_id: "pp_system"
  *   }
  * })
- * 
+ *
  * @summary
- * 
+ *
  * Create payment sessions.
  */
 export const createPaymentSessionsWorkflow = createWorkflow(
@@ -68,16 +81,93 @@ export const createPaymentSessionsWorkflow = createWorkflow(
       fields: ["id", "amount", "currency_code", "payment_sessions.*"],
       variables: { id: input.payment_collection_id },
       list: false,
+    }).config({ name: "get-payment-collection" })
+
+    const { customer, accountHolder } = when(
+      "customer-id-exists",
+      { input },
+      (data) => {
+        return !!data.input.customer_id
+      }
+    ).then(() => {
+      const customer: CustomerDTO = useRemoteQueryStep({
+        entry_point: "customer",
+        fields: [
+          "id",
+          "email",
+          "company_name",
+          "first_name",
+          "last_name",
+          "phone",
+          "addresses.*",
+          "metadata",
+        ],
+        variables: { id: input.customer_id },
+        list: false,
+      }).config({ name: "get-customer" })
+
+      const accountHolderInput = transform({ input, customer }, (data) => {
+        return {
+          provider_id: data.input.provider_id,
+          context: {
+            ...data.input.context,
+            customer: data.customer,
+          },
+        }
+      })
+
+      const accountHolder = createPaymentAccountHolderStep(accountHolderInput)
+      return { customer, accountHolder }
+    })
+
+    const updatedCustomer = when(
+      "account-holder-exists",
+      { accountHolder },
+      (data) => {
+        return isPresent(data.accountHolder)
+      }
+    ).then(() => {
+      updateCustomersStep({
+        selector: {
+          id: input.context?.customer?.id,
+        },
+        update: {
+          metadata: accountHolder,
+        },
+      })
+
+      const updatedCustomer = transform({ customer, accountHolder }, (data) => {
+        return {
+          ...data.customer,
+          metadata: {
+            ...data.customer.metadata,
+            ...data.accountHolder,
+          },
+        }
+      })
+
+      return updatedCustomer
+    })
+
+    const updatedContext = transform({ input, updatedCustomer }, (data) => {
+      return {
+        ...data.input.context,
+        email: data.input.context?.email ?? data.updatedCustomer?.email,
+        billing_address: (data.input.context?.billing_address ??
+          data.updatedCustomer?.addresses?.find((a) => a.is_default_billing) ??
+          data.updatedCustomer?.addresses?.[0]) as Partial<AddressDTO>,
+        customer: data.updatedCustomer as PaymentCustomerDTO,
+      }
     })
 
     const paymentSessionInput = transform(
-      { paymentCollection, input },
+      { paymentCollection, updatedContext, input },
       (data) => {
         return {
           payment_collection_id: data.input.payment_collection_id,
           provider_id: data.input.provider_id,
           data: data.input.data,
-          context: data.input.context,
+          context: data.updatedContext ?? data.input.context,
           amount: data.paymentCollection.amount,
           currency_code: data.paymentCollection.currency_code,
         }

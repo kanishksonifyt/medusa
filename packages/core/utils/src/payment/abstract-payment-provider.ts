@@ -9,6 +9,7 @@ import {
   ProviderWebhookPayload,
   UpdatePaymentProviderSession,
   WebhookActionResult,
+  PaymentAccountHolderResponse,
 } from "@medusajs/types"
 
 export abstract class AbstractPaymentProvider<TConfig = Record<string, unknown>>
@@ -626,6 +627,113 @@ export abstract class AbstractPaymentProvider<TConfig = Record<string, unknown>>
   ): Promise<PaymentProviderError | PaymentProviderSessionResponse>
 
   /**
+   * Create an account holder in the third-party service. In many payment providers this is optional.
+   *
+   * @param input - The context for which the account holder is created.
+   * @returns An object whose `data` property is set to the data returned by the payment provider. This should typically be stored as part of
+   * your customer entity metadata
+   *
+   * @example
+   * // other imports...
+   * import {
+   *   PaymentProviderContext,
+   *   PaymentProviderError,
+   *   PaymentMethodResponse,
+   *   PaymentAccountHolderResponse,
+   * } from "@medusajs/framework/types"
+   *
+   *
+   * class MyPaymentProviderService extends AbstractPaymentProvider<
+   *   Options
+   * > {
+   *   async createAccountHolder(
+   *     context: PaymentProviderContext
+   *   ): Promise<PaymentProviderError | PaymentAccountHolderResponse> {
+   *     const {
+   *       email,
+   *       customer,
+   *     } = context
+   *     const externalCustomerId = customer.metadata.pp_stripe_stripe_customer_id
+   *     if(externalCustomerId) {
+   *       return { data: {} }
+   *     }
+   *
+   *     try {
+   *       // assuming you have a client that creates a customer
+   *       const response = await this.client.createCustomer(
+   *         {email: email ?? customer.email}
+   *       )
+   *
+   *       return { data: { pp_stripe_stripe_customer_id: response.id } }
+   *     } catch (e) {
+   *       return {
+   *         error: e,
+   *         code: "unknown",
+   *         detail: e
+   *       }
+   *     }
+   *   }
+   *
+   *   // ...
+   * }
+   */
+  abstract createAccountHolder(
+    input: PaymentProviderContext
+  ): Promise<PaymentProviderError | PaymentAccountHolderResponse>
+
+  /**
+   * Delete an account holder in the third-party service. In many payment providers this is optional.
+   *
+   * @param input - The context for which the account holder is created.
+   * @returns An object whose `data` property is set to the data returned by the payment provider. This should typically be stored as part of
+   * your customer entity metadata, and it would typically unset the account holder fields
+   *
+   * @example
+   * // other imports...
+   * import {
+   *   PaymentProviderContext,
+   *   PaymentProviderError,
+   *   PaymentMethodResponse,
+   *   PaymentAccountHolderResponse,
+   * } from "@medusajs/framework/types"
+   *
+   *
+   * class MyPaymentProviderService extends AbstractPaymentProvider<
+   *   Options
+   * > {
+   *   async deleteAccountHolder(
+   *     context: PaymentProviderContext
+   *   ): Promise<PaymentProviderError | PaymentAccountHolderResponse> {
+   *     const { customer } = context
+   *     const externalCustomerId = customer.metadata.pp_stripe_stripe_customer_id
+   *     if(externalCustomerId) {
+   *       return { data: {} }
+   *     }
+   *
+   *     try {
+   *       // assuming you have a client that creates a customer
+   *       const response = await this.client.deleteCustomer(
+
+   *       )
+   *
+   *       return { data: { pp_stripe_stripe_customer_id: "" } }
+   *     } catch (e) {
+   *       return {
+   *         error: e,
+   *         code: "unknown",
+   *         detail: e
+   *       }
+   *     }
+   *   }
+   *
+   *   // ...
+   * }
+   */
+  abstract deleteAccountHolder(
+    input: PaymentProviderContext
+  ): Promise<PaymentProviderError | PaymentAccountHolderResponse>
+
+  /**
    * List the payment methods associated with the context (eg. customer) of the payment provider, if any.
    *
    * @param context - The context for which the payment methods are listed. Usually the customer should be provided.
@@ -650,7 +758,7 @@ export abstract class AbstractPaymentProvider<TConfig = Record<string, unknown>>
    *     const {
    *       customer,
    *     } = context
-   *     const externalCustomerId = customer.metadata.stripe_id
+   *     const externalCustomerId = customer.metadata.pp_stripe_stripe_customer_id
    *
    *     try {
    *       // assuming you have a client that updates the payment

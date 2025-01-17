@@ -3,6 +3,7 @@ import {
   PaymentMethodResponse,
   PaymentProviderError,
   PaymentProviderSessionResponse,
+  PaymentAccountHolderResponse,
   ProviderWebhookPayload,
   WebhookActionResult,
 } from "@medusajs/framework/types"
@@ -71,6 +72,18 @@ export class SystemProviderService extends AbstractPaymentProvider {
 
   async cancelPayment(_): Promise<Record<string, unknown>> {
     return {}
+  }
+
+  async createAccountHolder(
+    _
+  ): Promise<PaymentProviderError | PaymentAccountHolderResponse> {
+    return { data: {} }
+  }
+
+  async deleteAccountHolder(
+    _
+  ): Promise<PaymentProviderError | PaymentAccountHolderResponse> {
+    return { data: {} }
   }
 
   async listPaymentMethods(_): Promise<PaymentMethodResponse[]> {

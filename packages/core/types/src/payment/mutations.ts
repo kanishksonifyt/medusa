@@ -256,6 +256,33 @@ export interface CreatePaymentProviderDTO {
 }
 
 /**
+ * The payment session to be created.
+ */
+export interface CreateAccountHolderDTO {
+  /**
+   * The provider's ID.
+   */
+  provider_id: string
+
+  /**
+   * Necessary context data for the associated payment provider.
+   */
+  context: PaymentProviderContext
+}
+
+export interface DeleteAccountHolderDTO {
+  /**
+   * The provider's ID.
+   */
+  provider_id: string
+
+  /**
+   * Necessary context data for the associated payment provider.
+   */
+  context: PaymentProviderContext
+}
+
+/**
  * The details of the webhook event payload.
  */
 export interface ProviderWebhookPayload {

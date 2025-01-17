@@ -2543,7 +2543,6 @@ medusaIntegrationTestRunner({
             await paymentModule.createPaymentCollections({
               amount: 5001,
               currency_code: "dkk",
-              region_id: defaultRegion.id,
             })
 
           const paymentSession = await paymentModule.createPaymentSession(
@@ -2615,7 +2614,6 @@ medusaIntegrationTestRunner({
               await paymentModule.createPaymentCollections({
                 amount: 5000,
                 currency_code: "dkk",
-                region_id: defaultRegion.id,
               })
 
             const paymentSession = await paymentModule.createPaymentSession(

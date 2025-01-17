@@ -4,6 +4,7 @@ import {
   DAL,
   IPaymentProvider,
   Logger,
+  PaymentAccountHolderResponse,
   PaymentMethodResponse,
   PaymentProviderAuthorizeResponse,
   PaymentProviderContext,
@@ -73,7 +74,7 @@ Please make sure that the provider is registered in the container and it is conf
   async updateSession(
     providerId: string,
     sessionInput: UpdatePaymentProviderSession
-  ): Promise<Record<string, unknown> | undefined> {
+  ): Promise<PaymentProviderSessionResponse["data"]> {
     const provider = this.retrieveProvider(providerId)
 
     const paymentResponse = await provider.updatePayment(sessionInput)
@@ -82,7 +83,7 @@ Please make sure that the provider is registered in the container and it is conf
       this.throwPaymentProviderError(paymentResponse)
     }
 
-    return (paymentResponse as PaymentProviderSessionResponse)?.data
+    return (paymentResponse as PaymentProviderSessionResponse).data
   }
 
   async deleteSession(input: PaymentProviderDataInput): Promise<void> {
@@ -150,6 +151,32 @@ Please make sure that the provider is registered in the container and it is conf
     }
 
     return res as Record<string, unknown>
+  }
+
+  async createAccountHolder(
+    providerId: string,
+    context: PaymentProviderContext
+  ): Promise<Record<string, unknown>> {
+    const provider = this.retrieveProvider(providerId)
+    const res = await provider.createAccountHolder(context)
+    if (isPaymentProviderError(res)) {
+      this.throwPaymentProviderError(res)
+    }
+
+    return (res as PaymentAccountHolderResponse).data
+  }
+
+  async deleteAccountHolder(
+    providerId: string,
+    context: PaymentProviderContext
+  ): Promise<Record<string, unknown>> {
+    const provider = this.retrieveProvider(providerId)
+    const res = await provider.deleteAccountHolder(context)
+    if (isPaymentProviderError(res)) {
+      this.throwPaymentProviderError(res)
+    }
+
+    return (res as PaymentAccountHolderResponse).data
   }
 
   async listPaymentMethods(
